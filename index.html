@@ -14,6 +14,7 @@
     body {
       background-color: #000;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
@@ -25,21 +26,100 @@
       font-size: 15vw;
       letter-spacing: 0.05em;
     }
+
+    #countdown-title {
+      color: #fff;
+      font-family: monospace;
+      font-size: 4vw;
+      letter-spacing: 0.05em;
+      margin-bottom: 1vw;
+    }
   </style>
 </head>
 <body>
+  <div id="countdown-title"></div>
   <div id="clock"></div>
   <script>
-    function updateClock() {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      const s = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+    var params = new URLSearchParams(window.location.search);
+    var timeParam  = params.get('time');
+    var dateParam  = params.get('date');
+    var titleParam = params.get('title');
+
+    var SECONDS_PER_DAY  = 86400;
+    var SECONDS_PER_HOUR = 3600;
+    var SECONDS_PER_MIN  = 60;
+
+    function parseTargetDate(dateStr, timeStr) {
+      var now = new Date();
+      var day, month, year;
+      if (dateStr) {
+        var parts = dateStr.split('.');
+        if (parts.length !== 3) { return null; }
+        day   = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        year  = parseInt(parts[2], 10);
+        if (isNaN(day) || isNaN(month) || isNaN(year)) { return null; }
+      } else {
+        day   = now.getDate();
+        month = now.getMonth();
+        year  = now.getFullYear();
+      }
+      var timeParts = timeStr.split(':');
+      if (timeParts.length < 2) { return null; }
+      var hours   = parseInt(timeParts[0], 10);
+      var minutes = parseInt(timeParts[1], 10);
+      var seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
+      if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) { return null; }
+      return new Date(year, month, day, hours, minutes, seconds);
     }
 
-    updateClock();
-    setInterval(updateClock, 1000);
+    if (timeParam) {
+      var target = parseTargetDate(dateParam, timeParam);
+      var title  = titleParam || 'Countdown';
+      document.getElementById('countdown-title').textContent = title;
+
+      var countdownInterval;
+      function updateCountdown() {
+        var now  = new Date();
+        var diff = target ? target - now : -1;
+        if (diff <= 0) {
+          document.getElementById('clock').textContent = '00:00:00';
+          clearInterval(countdownInterval);
+          return;
+        }
+        var totalSeconds = Math.floor(diff / 1000);
+        var d = Math.floor(totalSeconds / SECONDS_PER_DAY);
+        var h = Math.floor((totalSeconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+        var m = Math.floor((totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MIN);
+        var s = totalSeconds % SECONDS_PER_MIN;
+        var text;
+        if (d > 0) {
+          text = String(d) + 'd ' +
+                 String(h).padStart(2, '0') + ':' +
+                 String(m).padStart(2, '0') + ':' +
+                 String(s).padStart(2, '0');
+        } else {
+          text = String(h).padStart(2, '0') + ':' +
+                 String(m).padStart(2, '0') + ':' +
+                 String(s).padStart(2, '0');
+        }
+        document.getElementById('clock').textContent = text;
+      }
+
+      updateCountdown();
+      countdownInterval = setInterval(updateCountdown, 1000);
+    } else {
+      function updateClock() {
+        var now = new Date();
+        var h = String(now.getHours()).padStart(2, '0');
+        var m = String(now.getMinutes()).padStart(2, '0');
+        var s = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000);
+    }
   </script>
 </body>
 </html>
