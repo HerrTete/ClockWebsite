@@ -45,13 +45,17 @@
     var dateParam  = params.get('date');
     var titleParam = params.get('title');
 
-    var SECONDS_PER_DAY  = 86400;
-    var SECONDS_PER_HOUR = 3600;
-    var SECONDS_PER_MIN  = 60;
+    var SECONDS_PER_DAY    = 86400;
+    var SECONDS_PER_HOUR   = 3600;
+    var SECONDS_PER_MIN    = 60;
+    var MS_PER_HOUR        = SECONDS_PER_HOUR * 1000;
+    var FONT_DAYS_SINGLE   = '11vw';
+    var FONT_DAYS_DOUBLE   = '10vw';
 
     function parseTargetDate(dateStr, timeStr) {
       var now = new Date();
       var day, month, year;
+      var autoDate = !dateStr;
       if (dateStr) {
         var parts = dateStr.split('.');
         if (parts.length !== 3) { return null; }
@@ -70,7 +74,11 @@
       var minutes = parseInt(timeParts[1], 10);
       var seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
       if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) { return null; }
-      return new Date(year, month, day, hours, minutes, seconds);
+      var target = new Date(year, month, day, hours, minutes, seconds);
+      if (autoDate && (now - target) > MS_PER_HOUR) {
+        target.setDate(target.getDate() + 1);
+      }
+      return target;
     }
 
     if (timeParam) {
@@ -80,13 +88,41 @@
 
       var countdownInterval;
       function updateCountdown() {
-        var now  = new Date();
-        var diff = target ? target - now : -1;
-        if (diff <= 0) {
-          document.getElementById('clock').textContent = '00:00:00';
+        var now     = new Date();
+        var clockEl = document.getElementById('clock');
+
+        if (!target) {
+          clockEl.textContent    = '00:00:00';
+          clockEl.style.color    = '';
+          clockEl.style.fontSize = '';
           clearInterval(countdownInterval);
           return;
         }
+
+        var diff = target - now;
+
+        if (diff <= -MS_PER_HOUR) {
+          clockEl.textContent    = '00:00:00';
+          clockEl.style.color    = '';
+          clockEl.style.fontSize = '';
+          clearInterval(countdownInterval);
+          return;
+        }
+
+        if (diff < 0) {
+          var negSeconds = Math.floor(-diff / 1000);
+          var nh = Math.floor((negSeconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+          var nm = Math.floor((negSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MIN);
+          var ns = negSeconds % SECONDS_PER_MIN;
+          clockEl.textContent    = '-' + String(nh).padStart(2, '0') + ':' +
+                                         String(nm).padStart(2, '0') + ':' +
+                                         String(ns).padStart(2, '0');
+          clockEl.style.color    = '#ff0000';
+          clockEl.style.fontSize = '';
+          return;
+        }
+
+        clockEl.style.color = '';
         var totalSeconds = Math.floor(diff / 1000);
         var d = Math.floor(totalSeconds / SECONDS_PER_DAY);
         var h = Math.floor((totalSeconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
@@ -98,12 +134,14 @@
                  String(h).padStart(2, '0') + ':' +
                  String(m).padStart(2, '0') + ':' +
                  String(s).padStart(2, '0');
+          clockEl.style.fontSize = d >= 10 ? FONT_DAYS_DOUBLE : FONT_DAYS_SINGLE;
         } else {
           text = String(h).padStart(2, '0') + ':' +
                  String(m).padStart(2, '0') + ':' +
                  String(s).padStart(2, '0');
+          clockEl.style.fontSize = '';
         }
-        document.getElementById('clock').textContent = text;
+        clockEl.textContent = text;
       }
 
       updateCountdown();
